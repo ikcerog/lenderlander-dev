@@ -487,18 +487,18 @@
     </div>
 </header>
 
-<details open="open" style="margin: 8px auto; max-width: 1400px; padding: 16px; box-shadow: 0 0 4px #33333333; border-radius: 8px;"><summary>Click to Hide/Show AI Summary</summary>
+<details open="open" style="margin: 8px auto; max-width: 1400px; padding: 16px; box-shadow: 0 0 4px #33333333; border-radius: 8px;"><summary>Click to Hide/Show Claude AI Summary</summary>
 <div id="ai-insight-panel" class="feed-section">
     <div id="ai-summary-header">
-         <h2>✨ AI Strategy Summary [Slowed in DEV]</h2>
+         <h2>✨ Claude AI Strategy Summary [Slowed in DEV]</h2>
          <button id="copy-summary-button" onclick="copyAISummary()" title="Copy the full AI Summary to your clipboard" disabled>Copy Summary</button>
     </div>
-    
+
     <div id="ai-summary-status">
         </div>
-    
+
     <div id="ai-summary-content">
-        <p>AI summary is slowed in DEV to preserve resources</p>
+        <p>Claude AI summary is slowed in DEV to preserve resources</p>
     </div>
 </div>
 </details>
@@ -1112,18 +1112,18 @@
                 const data = await response.json();
                 
                 // 4. Update the UI
-                summaryHeader.innerHTML = data.header || '✨ AI Strategy Summary (Generated)';
-                
+                summaryHeader.innerHTML = data.header || '✨ Claude AI Strategy Summary (Generated)';
+
                 // Render Markdown content (ensure marked.js and DOMPurify are loaded)
                 const renderedHtml = DOMPurify.sanitize(marked.parse(data.summary));
                 summaryContent.innerHTML = renderedHtml;
-                
+
                 enableCopyButton();
 
             } catch (error) {
-                console.error("AI Proxy Error:", error.message);
-                summaryHeader.innerHTML = '❌ **AI Summary Failed**';
-                summaryContent.innerHTML = `<p class="error-message">AI Proxy Error: ${error.message}</p>`;
+                console.error("Claude API Error:", error.message);
+                summaryHeader.innerHTML = '❌ **Claude AI Summary Failed**';
+                summaryContent.innerHTML = `<p class="error-message">Claude API Error: ${error.message}</p>`;
                 document.getElementById('copy-summary-button').disabled = true;
             }
         }
