@@ -3,7 +3,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const { GoogleGenAI } = require("@google/genai");
+const Anthropic = require("@anthropic-ai/sdk");
 const Parser = require('rss-parser'); // <-- NEW: RSS Parser dependency
 const parser = new Parser({
     // Add a custom user-agent to avoid being blocked by some servers
@@ -11,14 +11,14 @@ const parser = new Parser({
 });
 
 // Load environment variables locally (Render ignores this but it's good for local testing)
-require('dotenv').config(); 
+require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// --- CRITICAL FIX FOR RENDER DEPLOYMENT ---
-const apiKey = process.env.GEMINI_API_KEY;
-const ai = new GoogleGenAI({ apiKey: apiKey });
+// --- ANTHROPIC CLAUDE API SETUP ---
+const apiKey = process.env.ANTHROPIC_API_KEY;
+const anthropic = new Anthropic({ apiKey: apiKey });
 // ------------------------------------------
 
 // Middleware setup
@@ -77,7 +77,7 @@ app.post('/api/fetch-reddit', async (req, res) => {
     }
 });
 
-// 2. AI Summary Endpoint (Remains the same)
+// 2. AI Summary Endpoint (Now using Claude API)
 app.post('/api/summarize-news', async (req, res) => {
     const htmlContent = req.body.htmlContent;
 
@@ -86,47 +86,51 @@ app.post('/api/summarize-news', async (req, res) => {
     }
 
     // --- PROMPT ENGINEERING: MORTGAGE INDUSTRY FOCUS ---
-    const modelName = "gemini-2.5-flash"; // Fast and capable model for text analysis
-    const inputPrompt = `
-        You are a **senior strategic analyst specializing in the U.S. Residential Mortgage Industry**.
-        Your task is to analyze the following HTML content, which contains recent news articles from major industry feeds (MND, HousingWire, CFPB, Reddit).
+    const modelName = "claude-3-5-sonnet-20241022"; // Claude Sonnet for fast and capable text analysis
+    const inputPrompt = `You are a **senior strategic analyst specializing in the U.S. Residential Mortgage Industry**.
+Your task is to analyze the following HTML content, which contains recent news articles from major industry feeds (MND, HousingWire, CFPB, Reddit).
 
-        1. **SCAN** the provided HTML content for all titles, sources, and descriptions within the '.news-card' elements.
-        2. **IGNORE** all hidden elements or administrative content (like 'Hide Forever' buttons).
-        3. **GENERATE** a strategic summary in Markdown format that is ready to be directly displayed in a dashboard panel.
+1. **SCAN** the provided HTML content for all titles, sources, and descriptions within the '.news-card' elements.
+2. **IGNORE** all hidden elements or administrative content (like 'Hide Forever' buttons).
+3. **GENERATE** a strategic summary in Markdown format that is ready to be directly displayed in a dashboard panel.
 
-        Your output MUST be structured using Markdown headings and lists, focusing on actionable insights for mortgage professionals:
+Your output MUST be structured using Markdown headings and lists, focusing on actionable insights for mortgage professionals:
 
-        ## 📈 Rate & Housing Market Outlook
-        * **Interest Rate Momentum**: Summarize the current trajectory of 30-year fixed rates (rising, falling, steady) and the primary driver (e.g., inflation, Fed statements).
-        * **Housing Inventory/Prices**: Describe the immediate status of housing inventory and its effect on affordability and sales volume.
+## 📈 Rate & Housing Market Outlook
+* **Interest Rate Momentum**: Summarize the current trajectory of 30-year fixed rates (rising, falling, steady) and the primary driver (e.g., inflation, Fed statements).
+* **Housing Inventory/Prices**: Describe the immediate status of housing inventory and its effect on affordability and sales volume.
 
-        ## ⚖️ Regulatory & Compliance Watch
-        * **Key Regulatory Focus**: What is the most active regulatory body (CFPB, FHFA, state AGs) and what specific rules or enforcement actions are dominating the news?
-        * **Litigation & Risk**: Identify any emerging litigation trends or compliance blindspots (e.g., servicing errors, data privacy).
+## ⚖️ Regulatory & Compliance Watch
+* **Key Regulatory Focus**: What is the most active regulatory body (CFPB, FHFA, state AGs) and what specific rules or enforcement actions are dominating the news?
+* **Litigation & Risk**: Identify any emerging litigation trends or compliance blindspots (e.g., servicing errors, data privacy).
 
-        ## 💻 Industry Strategy & Technology (FinTech)
-        * **Lender Response**: What are large lenders (Rocket, UWM) or regional lenders doing strategically (e.g., staffing, new products, M&A)?
-        * **Tech/AI Integration**: What specific technology area (AI underwriting, LOS platforms, blockchain) requires immediate attention or investment or planning?
+## 💻 Industry Strategy & Technology (FinTech)
+* **Lender Response**: What are large lenders (Rocket, UWM) or regional lenders doing strategically (e.g., staffing, new products, M&A)?
+* **Tech/AI Integration**: What specific technology area (AI underwriting, LOS platforms, blockchain) requires immediate attention or investment or planning?
 
-        ---
-        HTML Content to Analyze:
-        ---
-        ${htmlContent}
-    `;
-    
+---
+HTML Content to Analyze:
+---
+${htmlContent}`;
+
     try {
-        const response = await ai.models.generateContent({
+        const message = await anthropic.messages.create({
             model: modelName,
-            contents: inputPrompt,
+            max_tokens: 2048,
+            messages: [
+                {
+                    role: "user",
+                    content: inputPrompt
+                }
+            ]
         });
 
-        // The response text is the summary, structured by the prompt.
-        const summary = response.text;
+        // Extract the text content from Claude's response
+        const summary = message.content[0].text;
 
         res.json({ summary: summary });
     } catch (error) {
-        console.error("Gemini API Error:", error);
+        console.error("Claude API Error:", error);
         res.status(500).json({ error: 'Failed to generate AI summary. Check server logs.' });
     }
 });
