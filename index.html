@@ -579,8 +579,9 @@
     { id: 'company-news-tags', url: 'https://www.housingwire.com/tag/rocket-mortgage/feed/', source: 'HousingWire: Rocket Mortgage Tag' },
 
     // --- COMPANY PRESS RELEASES (User Requested) ---
-    { id: 'company-press-releases', url: 'https://www.rocketcompanies.com/feed/?post_type=press_release', source: 'Rocket Companies PR' },
-    { id: 'company-press-releases', url: 'https://feed.businesswire.com/rss/home/company/United+Wholesale+Mortgage%2C+LLC/w6euAGJXjezVpz22AaGCsA==?_gl=1*16nikhv*_gcl_au*MzE3OTYyNzg4LjE3MjQ3NjUwMjM.*_ga*MTI5NTUzNDI3OS4xNzI0NzY1MDIz*_ga_ZQWF70T3FK*MTcyNjA2NzQyNC4zLjEuMTcyNjA2NzQzOS40NS4wLjA.', source: 'UWM Business Wire' },
+    // NOTE: These are grouped under 'company-news-tags' for rendering purposes
+    { id: 'company-news-tags', url: 'https://www.rocketcompanies.com/feed/?post_type=press_release', source: 'Rocket Companies PR' },
+    { id: 'company-news-tags', url: 'https://feed.businesswire.com/rss/home/company/United+Wholesale+Mortgage%2C+LLC/w6euAGJXjezVpz22AaGCsA==?_gl=1*16nikhv*_gcl_au*MzE3OTYyNzg4LjE3MjQ3NjUwMjM.*_ga*MTI5NTUzNDI3OS4xNzI0NzY1MDIz*_ga_ZQWF70T3FK*MTcyNjA2NzQyNC4zLjEuMTcyNjA2NzQzOS40NS4wLjA.', source: 'UWM Business Wire' },
 
     // --- REAL ESTATE MARKET & ECONOMIC INFLUENCERS ---
     { id: 'real-estate-market', url: 'https://www.calculatedriskblog.com/feeds/posts/default', source: 'Calculated Risk' },
@@ -593,7 +594,7 @@
 
     // --- FINANCE, FINTECH, & INDUSTRY TECHNOLOGY ---
     { id: 'finance-fintech', url: 'https://techcrunch.com/category/fintech/feed/', source: 'TechCrunch: Fintech' },
-    { id: 'finance-fintech', url: 'https://www.theblockcrypto.com/rss/feed/mortgage-fintech', source: 'The Block: Mortgage Fintech' },
+    // NOTE: The Block RSS feed is broken/dead; removed for reliability
     { id: 'finance-fintech', url: 'https://www.americanbanker.com/feeds/news', source: 'American Banker' },
 
     // --- OTHER (User Requested) ---
@@ -601,11 +602,11 @@
     ];
 
     const REDDIT_FEEDS = [
-        { id: 'r/realestateinvesting', url: 'https://www.reddit.com/r/realestateinvesting.rss' },
-        { id: 'r/Mortgage', url: 'https://www.reddit.com/r/Mortgage.rss' },
-        { id: 'r/FirstTimeHomeBuyer', url: 'https://www.reddit.com/r/FirstTimeHomeBuyer.rss' },
-        { id: 'r/financialindependence', url: 'https://www.reddit.com/r/financialindependence.rss' },
-        { id: 'r/personalfinance', url: 'https://www.reddit.com/r/personalfinance.rss' },
+        { id: 'r/realestateinvesting', url: 'https://www.reddit.com/r/realestateinvesting.rss', subreddit: 'realestateinvesting' },
+        { id: 'r/Mortgage', url: 'https://www.reddit.com/r/Mortgage.rss', subreddit: 'Mortgage' },
+        { id: 'r/FirstTimeHomeBuyer', url: 'https://www.reddit.com/r/FirstTimeHomeBuyer.rss', subreddit: 'FirstTimeHomeBuyer' },
+        { id: 'r/financialindependence', url: 'https://www.reddit.com/r/financialindependence.rss', subreddit: 'financialindependence' },
+        { id: 'r/personalfinance', url: 'https://www.reddit.com/r/personalfinance.rss', subreddit: 'personalfinance' },
     ];
        
         let HIDDEN_LINKS = new Set();
@@ -800,8 +801,8 @@
             // Note: The max-height trick works best with a fixed large value
             if (section.classList.contains('hidden')) {
                 // Remove the class first to trigger the transition based on style change
-                section.classList.remove('hidden');
                 section.style.maxHeight = '5000px'; 
+                section.classList.remove('hidden');
                 button.classList.add('active');
             } else {
                 // Set max-height to 0 before adding the hidden class (which prevents instant jump)
@@ -814,19 +815,8 @@
             }
         }
 
-        // --- CORE FETCH AND RENDER LOGIC (Restored) ---
-
-        document.addEventListener('DOMContentLoaded', () => {
-            loadThemePreference();
-            loadViewPreference();
-            loadFilterBarPreference();
-            loadHiddenLinks(); 
-            // NOTE: Marked.js and DOMPurify must be included in your page (via <script> tags in the <head>) 
-            // for the AI summary and Reddit parsing functions to work correctly.
-            fetchAndRenderFeeds(); 
-        });
-
-
+        // --- CORE FETCH AND RENDER LOGIC (FIXED FOR 400 ERROR) ---
+        
         /**
          * Renders an individual news card HTML.
          */
@@ -873,89 +863,108 @@
             `;
         }
 
-
         /**
-         * Fetches RSS feeds from the server and renders the news cards. (Restored)
+         * Fetches RSS feeds from the server and renders the news cards.
+         * FIX: Sends the individual feed URL in the JSON body as expected by the server.
          */
         async function fetchAndRenderFeeds() {
-            // Clear all editorial containers
-            document.querySelectorAll('.news-grid-container .news-grid').forEach(el => el.innerHTML = 'Loading Editorial News...');
-            document.getElementById('community-pulse-container').innerHTML = ''; // Clear Reddit container
+            // 1. Initialize data structure to hold results per section
+            const sectionData = {};
+            const containers = {};
+            
+            // Clear and set loading status for all sections
+            document.querySelectorAll('.news-grid-container').forEach(container => {
+                const sectionId = container.getAttribute('data-feed-id');
+                containers[sectionId] = container.querySelector('.news-grid');
+                containers[sectionId].innerHTML = 'Loading Editorial News...';
+            });
+            document.getElementById('community-pulse-container').innerHTML = ''; 
 
-            const rssUrls = EDITORIAL_FEEDS.map(feed => feed.url);
-
-            // Fetch Editorial feeds
-            try {
-                // Assuming /api/fetch-rss is the correct endpoint for your proxy server
-                const response = await fetch('/api/fetch-rss', {
+            // 2. Fetch all editorial feeds concurrently
+            const fetchPromises = EDITORIAL_FEEDS.map(feedConfig => {
+                return fetch('/api/fetch-rss', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ urls: rssUrls })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                // Match fetched articles to their section IDs
-                const sectionData = {};
-                data.forEach(article => {
-                    // Find the feed config based on the URL that was fetched
-                    const feedConfig = EDITORIAL_FEEDS.find(f => f.url === article.feedUrl);
-                    if (feedConfig) {
-                        const sectionId = feedConfig.id;
-                        if (!sectionData[sectionId]) {
-                            sectionData[sectionId] = [];
-                        }
-                        sectionData[sectionId].push({ ...article, source: feedConfig.source });
+                    body: JSON.stringify({ feedUrl: feedConfig.url }) // <-- CRITICAL FIX HERE
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // Throw error to be caught below, including the status
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Combine returned items with their source/ID metadata
+                    const items = data.items || [];
+                    const articles = items.map(item => ({ 
+                        ...item, 
+                        source: feedConfig.source,
+                        feedUrl: feedConfig.url 
+                    }));
+                    
+                    const sectionId = feedConfig.id;
+                    if (!sectionData[sectionId]) {
+                        sectionData[sectionId] = [];
+                    }
+                    sectionData[sectionId].push(...articles);
+                })
+                .catch(error => {
+                    // This error is handled per feed, console logged, but doesn't halt others
+                    console.error(`Error fetching feed ${feedConfig.url}:`, error);
+                    // Update the specific container with an error message
+                    if (containers[feedConfig.id]) {
+                         containers[feedConfig.id].innerHTML = `<p class="error-message">Failed to load news: ${error.message}</p>`;
                     }
                 });
+            });
 
-                // Render to the DOM
-                for (const sectionId in sectionData) {
-                    const container = document.querySelector(`.news-grid-container[data-feed-id="${sectionId}"] .news-grid`);
-                    if (container) {
-                        container.innerHTML = sectionData[sectionId].map(createCardHtml).join('');
-                    }
+            // 3. Wait for all fetches to complete
+            await Promise.all(fetchPromises.map(p => p.catch(e => e))); 
+            
+            // 4. Render results to the DOM
+            for (const sectionId in sectionData) {
+                const container = containers[sectionId];
+                if (container) {
+                    // Remove duplicates (e.g., if one article appears in multiple feeds)
+                    const uniqueArticles = Object.values(sectionData[sectionId].reduce((acc, item) => {
+                        acc[item.link] = item;
+                        return acc;
+                    }, {}));
+
+                    // Sort by date (newest first)
+                    uniqueArticles.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+                    
+                    container.innerHTML = uniqueArticles.map(createCardHtml).join('');
                 }
-                
-                // After editorial rendering, trigger AI summary and Reddit fetch
-                // NOTE: If you don't have marked.js/DOMPurify included, remove the generateAISummary call.
-                generateAISummary(); 
-                fetchRedditFeeds(REDDIT_FEEDS.map(feed => feed.url));
-
-            } catch (error) {
-                console.error('Error fetching Editorial feeds:', error);
-                document.querySelectorAll('.news-grid-container .news-grid').forEach(el => el.innerHTML = `<p class="error-message">Failed to load news: ${error.message}</p>`);
             }
+            
+            // 5. Trigger AI summary and Reddit fetch
+            generateAISummary(); 
+            fetchRedditFeeds(); 
         }
 
-
         /**
-         * Renders Reddit posts into the community pulse container. (Restored)
+         * Renders Reddit posts into the community pulse container.
          */
         function renderRedditPosts(posts) {
             const container = document.getElementById('community-pulse-container');
             if (!container) return; 
 
-            // Clear existing content
             container.innerHTML = ''; 
 
-            // Group posts by subreddit
             const postsBySubreddit = posts.reduce((acc, post) => {
-                if (!acc[post.subreddit]) {
-                    acc[post.subreddit] = [];
+                const subreddit = post.subreddit || 'Unknown';
+                if (!acc[subreddit]) {
+                    acc[subreddit] = [];
                 }
-                acc[post.subreddit].push(post);
+                acc[subreddit].push(post);
                 return acc;
             }, {});
 
-            // Render each subreddit group
             for (const subreddit in postsBySubreddit) {
                 const subredditTitle = document.createElement('div');
-                subredditTitle.className = 'reddit-subsection'; // Use the new style class
+                subredditTitle.className = 'reddit-subsection'; 
                 
                 const titleHeading = document.createElement('h3');
                 titleHeading.textContent = `r/${subreddit} (${postsBySubreddit[subreddit].length} Recent Posts)`;
@@ -965,14 +974,14 @@
                 grid.className = 'news-grid'; 
                 grid.innerHTML = postsBySubreddit[subreddit].map(item => {
                     const isHidden = HIDDEN_LINKS.has(item.link);
-                    const pubDate = new Date(item.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    // Use new Date(item.pubDate) or item.isoDate if available from parser
+                    const pubDate = new Date(item.pubDate || item.isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                     
-                    const searchTitle = item.title.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+                    const searchTitle = (item.title || '').toLowerCase().replace(/[^a-z0-9\s]/g, '');
                     const searchDesc = (item.description || '').toLowerCase().replace(/[^a-z0-9\s]/g, '');
 
-                    // Reddit description often contains HTML/Markdown, sanitize it.
-                    // NOTE: This requires 'marked' and 'DOMPurify' libraries to be loaded via <script> tags in the <head>
-                    let descriptionHtml = item.description ? DOMPurify.sanitize(marked.parse(item.description)) : 'No description available.';
+                    // NOTE: This assumes marked.js and DOMPurify are available.
+                    let descriptionHtml = item.content ? DOMPurify.sanitize(marked.parse(item.content)) : (item.description || 'No description available.');
 
                     return `
                         <div class="news-card ${isHidden ? 'hidden-tile' : ''}" 
@@ -1006,30 +1015,49 @@
 
 
         /**
-         * Fetches Reddit feeds from the server. (Restored)
+         * Fetches Reddit feeds from the server.
+         * FIX: Sends the subreddit name in the JSON body as expected by the server.
          */
-        async function fetchRedditFeeds(urls) {
+        async function fetchRedditFeeds() {
             const container = document.getElementById('community-pulse-container');
             container.innerHTML = 'Loading Community Pulse...';
 
-            try {
-                // Assuming /api/fetch-reddit is the correct endpoint for your proxy server
-                const response = await fetch('/api/fetch-reddit', {
+            const fetchPromises = REDDIT_FEEDS.map(feedConfig => {
+                return fetch('/api/fetch-reddit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ urls: urls })
+                    body: JSON.stringify({ subreddit: feedConfig.subreddit }) // <-- CRITICAL FIX HERE
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Map items to include the subreddit name
+                    return (data.items || []).map(item => ({ 
+                        ...item, 
+                        subreddit: feedConfig.subreddit 
+                    }));
+                })
+                .catch(error => {
+                    console.error(`Error fetching Reddit feed for ${feedConfig.subreddit}:`, error);
+                    return []; // Return empty array to keep Promise.all working
                 });
+            });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+            try {
+                const results = await Promise.all(fetchPromises);
+                const allPosts = results.flat(); // Flatten the array of arrays
+                
+                // Sort all posts together (newest first)
+                allPosts.sort((a, b) => new Date(b.pubDate || b.isoDate) - new Date(a.pubDate || a.isoDate));
 
-                const posts = await response.json();
-                renderRedditPosts(posts);
-
+                renderRedditPosts(allPosts);
             } catch (error) {
-                console.error('Error fetching Reddit feeds:', error);
-                if (container) {
+                console.error('Error in final Reddit compilation:', error);
+                 if (container) {
                     container.innerHTML = `<p class="error-message">Failed to load Community Pulse: ${error.message}</p>`;
                 }
             }
@@ -1052,19 +1080,19 @@
             const allNewsContainers = document.querySelectorAll('.news-grid-container .news-grid');
             let htmlContent = '';
             allNewsContainers.forEach(container => {
+                // IMPORTANT: This grabs the rendered cards which contain the searchable data attributes
                 htmlContent += container.innerHTML;
             });
 
-            if (!htmlContent.trim()) {
+            if (!htmlContent.trim() || htmlContent.includes('Failed to load news')) {
                 summaryHeader.innerHTML = '⚠️ **Cannot Generate Summary**';
-                summaryContent.innerHTML = '<p>No content loaded to summarize.</p>';
+                summaryContent.innerHTML = '<p>No sufficient content loaded to summarize (or feeds failed to load).</p>';
                 document.getElementById('copy-summary-button').disabled = true;
                 return;
             }
 
             // 3. Make the API Call
             try {
-                // Assuming /api/summarize-news is the correct endpoint for your proxy server
                 const response = await fetch('/api/summarize-news', {
                     method: 'POST',
                     headers: {
@@ -1077,14 +1105,14 @@
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
+                    const errorData = await response.json().catch(() => ({ error: `Status: ${response.status}` }));
                     throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
 
                 const data = await response.json();
                 
                 // 4. Update the UI
-                summaryHeader.innerHTML = data.header;
+                summaryHeader.innerHTML = data.header || '✨ AI Strategy Summary (Generated)';
                 
                 // Render Markdown content (ensure marked.js and DOMPurify are loaded)
                 const renderedHtml = DOMPurify.sanitize(marked.parse(data.summary));
@@ -1100,7 +1128,18 @@
             }
         }
         // --- END AI SUMMARY INTEGRATION FUNCTION ---
-
+        
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadThemePreference();
+            loadViewPreference();
+            loadFilterBarPreference();
+            loadHiddenLinks(); 
+            
+            // NOTE: You must ensure marked.js and DOMPurify are loaded via <script> tags in the <head>
+            // or the rendering functions (including AI summary) will fail.
+            fetchAndRenderFeeds(); 
+        });
 
     </script>
 </body>
