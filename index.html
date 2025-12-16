@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEV 📣 AdTech News</title>
+    <title>DEV 🏠 Mortgage Industry News</title>
    
     <style>
         /* --- CSS Styling and Variables --- */
@@ -11,10 +11,10 @@
             /* Light Theme Defaults */
             --primary-color: #2c3e50;
             --accent-color: #3498db;
-            --secondary-accent-1: #2ecc71;  
-            --secondary-accent-2: #e67e22;  
-            --secondary-accent-3: #16a085;  
-            --secondary-accent-4: #f39c12;  
+            --secondary-accent-1: #2ecc71; /* Community Pulse */ 
+            --secondary-accent-2: #e67e22; /* Lender & Mkt Data */ 
+            --secondary-accent-3: #16a085; /* Regulation & Tech */ 
+            --secondary-accent-4: #f39c12; /* Real Estate & Economy */ 
             --background-color: #ecf0f1;
             --card-background: #ffffff;
             --text-color: #34495e;
@@ -43,10 +43,10 @@
         body.midnight-mode {
             --primary-color: #0d1a26;
             --accent-color: #5d9cec;
-            --secondary-accent-1: #48c9b0;  
-            --secondary-accent-2: #f5b041;  
-            --secondary-accent-3: #45b39d;  
-            --secondary-accent-4: #f7dc6f;  
+            --secondary-accent-1: #48c9b0;
+            --secondary-accent-2: #f5b041;
+            --secondary-accent-3: #45b39d;
+            --secondary-accent-4: #f7dc6f;
             --background-color: #010409;
             --card-background: #0d1117;
             --text-color: #c9d1d9;
@@ -115,7 +115,7 @@
             justify-content: center;
         }
        
-        /* --- NEW: Filter Bar Container --- */
+        /* Filter Bar Container */
         #filter-bar-container {
             display: flex;
             flex-wrap: wrap;
@@ -221,13 +221,24 @@
             color: var(--text-color);
         }
        
-        /* Specific header colors for flair */
-        #community-pulse-feed h2 { color: var(--secondary-accent-1); }
-        #branding-advertising-feed h2 { color: var(--secondary-accent-2); }
-        /* FinTech (Enterprise Tech) and Tech Culture */
-        #fintech-new-feed h2 { color: var(--secondary-accent-3); }
-        #tech-culture-feed h2 { color: var(--secondary-accent-3); }
-        #ad-tech-feed h2 { color: var(--secondary-accent-4); }
+        /* Specific header colors for flair (UPDATED NAMES) */
+        /* Mortgage News & Author Coverage */
+        #core-mortgage-news h2 { color: var(--primary-color); } 
+        #housingwire-authors h2 { color: var(--primary-color); } 
+        #company-news-tags h2 { color: var(--primary-color); }
+        
+        /* Community Pulse/Reddit */
+        #community-pulse-feed h2 { color: var(--secondary-accent-1); } 
+
+        /* Lender Data (Branding/Campaigns replacement) */
+        #lender-market-data-feed h2 { color: var(--secondary-accent-2); } 
+        
+        /* Regulation, Compliance, & Fintech */
+        #regulation-compliance h2 { color: var(--secondary-accent-3); }
+        #finance-fintech h2 { color: var(--secondary-accent-3); }
+
+        /* Real Estate & Economy (Ad-Tech replacement) */
+        #real-estate-economy-feed h2 { color: var(--secondary-accent-4); }
 
 
         /* --- VIEW CONTROLS CSS (Grid and List) --- */
@@ -407,12 +418,20 @@
             border-bottom: none;
             padding-bottom: 0;
         }
+        
+        /* New styling for the status/throttle message container */
+        #ai-summary-status {
+            padding: 10px 0 0 0;
+            margin-bottom: 10px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            border-bottom: 1px dashed var(--border-color);
+        }
 
         #ai-summary-content {
             padding: 10px 0 0 0; /* Adjusted padding */
             line-height: 1.6;
             white-space: pre-wrap; /* Ensures the AI's formatting (like newlines) is respected */
-            border-top: 1px dashed var(--border-color);
             margin-top: 10px;
         }
         
@@ -435,89 +454,102 @@
 </head>
 <body class="light-mode">
     <header>
-        <div class="header-content">
-            <div class="header-top">
-                <h1>🚧 DEV 📣 AdTech News</h1>
-                <button id="theme-toggle" class="control-button" onclick="toggleTheme()">☀️ Switch to Dark Mode</button>
+    <div class="header-content">
+        <div class="header-top">
+            <h1>🏡 DEV 💵 Residential Mortgage Feed</h1>
+            <button id="theme-toggle" class="control-button" onclick="toggleTheme()">☀️ Switch to Dark Mode</button>
+        </div>
+       
+        <div id="search-container">
+            <input type="text" id="search-input" placeholder="Search for rates, regulation, companies (Rocket, UWM...)..." onkeyup="filterCards()">
+        </div>
+       
+        <div class="controls-row">
+            <button id="toggle-filter-bar-btn" class="control-button" onclick="toggleFilterBar()">Hide Filter Bar</button>
+
+            <div id="view-toggle-row">
+                <button id="grid-view-button" class="view-button control-button" onclick="setListView('grid')">Grid View</button>
+                <button id="list-view-button" class="view-button control-button" onclick="setListView('list')">List View</button>
             </div>
            
-            <div id="search-container">
-                <input type="text" id="search-input" placeholder="Start searching across all feeds..." onkeyup="filterCards()">
-            </div>
-           
-            <div class="controls-row">
-                <button id="toggle-filter-bar-btn" class="control-button" onclick="toggleFilterBar()">Hide Filter Bar</button>
-
-                <div id="view-toggle-row">
-                    <button id="grid-view-button" class="view-button control-button" onclick="setListView('grid')">Grid View</button>
-                    <button id="list-view-button" class="view-button control-button" onclick="setListView('list')">List View</button>
-                </div>
-               
-                <button id="reset-hidden-button" class="control-button" onclick="resetHiddenTiles()">Reset Hidden Tiles</button>
-            </div>
-           
-            <div id="filter-bar-container">
-                <button id="toggle-core-marketing" class="control-button active" data-target="core-marketing-feed" onclick="toggleSection(this)">Core Marketing</button>
-                <button id="toggle-branding" class="control-button active" data-target="branding-advertising-feed" onclick="toggleSection(this)">Branding & Campaigns</button>
-                <button id="toggle-adtech" class="control-button active" data-target="ad-tech-feed" onclick="toggleSection(this)">Ad Technology</button>
-                <button id="toggle-fintech" class="control-button active" data-target="fintech-new-feed" onclick="toggleSection(this)">Enterprise Tech</button>
-                <button id="toggle-tech" class="control-button active" data-target="tech-culture-feed" onclick="toggleSection(this)">Tech & Culture</button>
-                <button id="toggle-community" class="control-button active" data-target="community-pulse-feed" onclick="toggleSection(this)">Community Pulse</button>
-            </div>
+            <button id="reset-hidden-button" class="control-button" onclick="resetHiddenTiles()">Reset Hidden Tiles</button>
         </div>
-    </header>
-   
-    <div id="ai-insight-panel" class="feed-section">
-        <div id="ai-summary-header">
-             <h2>✨ AI Strategy Summary [Deactivated in DEV]</h2>
-             <button id="copy-summary-button" onclick="copyAISummary()" title="Copy the full AI Summary to your clipboard" disabled>Copy Summary</button>
-        </div>
-        <div id="ai-summary-content">
-            <p>AI summary is disabled in DEV</p>
+       
+        <div id="filter-bar-container">
+            <button id="toggle-core-mortgage" class="control-button active" data-target="core-mortgage-news" onclick="toggleSection(this)">Core News & Rates</button>
+            <button id="toggle-housingwire-authors" class="control-button active" data-target="housingwire-authors" onclick="toggleSection(this)">HW: Key Authors</button>
+            <button id="toggle-company-news" class="control-button active" data-target="company-news-tags" onclick="toggleSection(this)">Company Focus</button>
+            <button id="toggle-real-estate-economy" class="control-button active" data-target="real-estate-market" onclick="toggleSection(this)">Real Estate & Economy</button>
+            <button id="toggle-regulation" class="control-button active" data-target="regulation-compliance" onclick="toggleSection(this)">Regulation & CFPB</button>
+            <button id="toggle-fintech-finance" class="control-button active" data-target="finance-fintech" onclick="toggleSection(this)">FinTech & Finance</button>
+            <button id="toggle-community" class="control-button active" data-target="community-pulse-feed" onclick="toggleSection(this)">Community Pulse</button>
         </div>
     </div>
+</header>
 
+<details open="open" style="margin: 8px auto; max-width: 1400px; padding: 16px; box-shadow: 0 0 4px #33333333; border-radius: 8px;"><summary>Click to Hide/Show AI Summary</summary>
+<div id="ai-insight-panel" class="feed-section">
+    <div id="ai-summary-header">
+         <h2>✨ AI Strategy Summary [Slowed in DEV]</h2>
+         <button id="copy-summary-button" onclick="copyAISummary()" title="Copy the full AI Summary to your clipboard" disabled>Copy Summary</button>
+    </div>
+    
+    <div id="ai-summary-status">
+        </div>
+    
+    <div id="ai-summary-content">
+        <p>AI summary is slowed in DEV to preserve resources</p>
+    </div>
+</div>
+</details>
 
-    <div id="core-marketing-feed" class="feed-section">
-        <h2>📈 Core Marketing (Marketing Dive)</h2>
-        <div class="news-grid-container" data-feed-id="core-marketing-feed">
-            <div class="news-grid">Loading Core Marketing...</div>
-        </div>
+<div id="core-mortgage-news" class="feed-section">
+    <h2>📈 Core Mortgage News & Rates (MND, HousingWire, NMN)</h2>
+    <div class="news-grid-container" data-feed-id="core-mortgage-news">
+        <div class="news-grid">Loading Core Mortgage News...</div>
     </div>
+</div>
 
-    <div id="branding-advertising-feed" class="feed-section">
-        <h2>⭐️ Branding & Campaigns (Adweek, AdPulp, More...)</h2>
-        <div class="news-grid-container" data-feed-id="branding-advertising-feed">
-            <div class="news-grid">Loading Branding & Campaigns...</div>
-        </div>
+<div id="housingwire-authors" class="feed-section">
+    <h2>✍️ HousingWire: Key Author Insights (Kim, Kleimann, Nunes)</h2>
+    <div class="news-grid-container" data-feed-id="housingwire-authors">
+        <div class="news-grid">Loading Key Author Insights...</div>
     </div>
+</div>
 
-    <div id="ad-tech-feed" class="feed-section">
-        <h2>⚙️ Ad Technology (AdExchanger, VideoWeek...)</h2>
-        <div class="news-grid-container" data-feed-id="ad-tech-feed">
-            <div class="news-grid">Loading Ad Technology...</div>
-        </div>
+<div id="company-news-tags" class="feed-section">
+    <h2>🏛️ Company Focus & Press Releases (Rocket, UWM)</h2>
+    <div class="news-grid-container" data-feed-id="company-news-tags">
+        <div class="news-grid">Loading Company Focus & Press Releases...</div>
     </div>
+</div>
 
-    <div id="fintech-new-feed" class="feed-section">
-        <h2>💰 Enterprise Tech & FinTech (CIO Dive, Banking Dive)</h2>
-        <div class="news-grid-container" data-feed-id="fintech-new-feed">
-            <div class="news-grid">Loading Enterprise Tech & FinTech...</div>
-        </div>
+<div id="real-estate-market" class="feed-section">
+    <h2>🏘️ Real Estate Market & Economic Influencers (Calculated Risk, Inman)</h2>
+    <div class="news-grid-container" data-feed-id="real-estate-market">
+        <div class="news-grid">Loading Real Estate Market & Economy...</div>
     </div>
+</div>
 
-    <div id="tech-culture-feed" class="feed-section">
-        <h2>🌐 Tech & Culture (Wired)</h2>
-        <div class="news-grid-container" data-feed-id="tech-culture-feed">
-            <div class="news-grid">Loading Tech & Culture...</div>
-        </div>
+<div id="regulation-compliance" class="feed-section">
+    <h2>⚖️ Regulation & Compliance (CFPB, JD Supra)</h2>
+    <div class="news-grid-container" data-feed-id="regulation-compliance">
+        <div class="news-grid">Loading Regulation & Compliance...</div>
     </div>
-   
-    <div id="community-pulse-feed" class="feed-section">
-        <h2>🗣️ Community Pulse (Reddit Subreddits)</h2>
-        <div id="community-pulse-container">
-        </div>
+</div>
+
+<div id="finance-fintech" class="feed-section">
+    <h2>💻 FinTech & Finance Innovation (TechCrunch, American Banker)</h2>
+    <div class="news-grid-container" data-feed-id="finance-fintech">
+        <div class="news-grid">Loading FinTech & Finance Innovation...</div>
     </div>
+</div>
+
+<div id="community-pulse-feed" class="feed-section">
+    <h2>🗣️ Community Pulse (Reddit: r/Mortgage, r/FTHB, r/REI)</h2>
+    <div id="community-pulse-container">
+    </div>
+</div>
    
     <script>
         /* --- JavaScript for Theme Switching, Fetching, Rendering, and Controls --- */
@@ -534,34 +566,47 @@
         ];
 
         const EDITORIAL_FEEDS = [
-            { id: 'core-marketing-feed', url: 'https://www.marketingdive.com/feeds/news', source: 'Marketing Dive' },
-            { id: 'branding-advertising-feed', url: 'https://www.adweek.com/feed/', source: 'Adweek' }, 
-            { id: 'branding-advertising-feed', url: 'https://www.moreaboutadvertising.com/feed/', source: 'More About Adv.' },
-            { id: 'branding-advertising-feed', url: 'https://feeds.feedburner.com/Adpulp', source: 'AdPulp' },
-           
-            // --- EXPANDED AD TECH FEEDS ---
-            { id: 'ad-tech-feed', url: 'https://www.adexchanger.com/feed/', source: 'AdExchanger' },
-            { id: 'ad-tech-feed', url: 'https://adtechdaily.com/feed/', source: 'Ad Tech Daily' },
-            { id: 'ad-tech-feed', url: 'https://videoweek.com/feed/', source: 'VideoWeek' },
-            { id: 'ad-tech-feed', url: 'https://advertisemint.com/feed/', source: 'AdvertiseMint' },
-            { id: 'ad-tech-feed', url: 'https://clearcode.cc/feed', source: 'Clearcode Blog' },
-            { id: 'ad-tech-feed', url: 'https://medium.com/feed/ipg-media-lab', source: 'IPG Media Lab' }, // Programmatic / Innovation
-            { id: 'ad-tech-feed', url: 'https://silverpush.co/feed', source: 'SilverPush Blog' }, // Video/AI AdTech
-           
-            // --- ENTERPRISE & FINTECH SECTION ---
-            { id: 'fintech-new-feed', url: 'https://www.ciodive.com/feed/', source: 'CIO Dive' },
-            { id: 'fintech-new-feed', url: 'https://www.bankingdive.com/topic/fintech/feed/', source: 'Banking Dive' },
-           
-            { id: 'tech-culture-feed', url: 'https://www.wired.com/feed/rss', source: 'Wired' }, 
-        ];
-       
-        const REDDIT_FEEDS = [
-            { id: 'r/marketing', url: 'https://www.reddit.com/r/marketing.rss' },
-            { id: 'r/advertising', url: 'https://www.reddit.com/r/advertising.rss' },
-            { id: 'r/tech', url: 'https://www.reddit.com/r/tech.rss' },
-            { id: 'r/fintech', url: 'https://www.reddit.com/r/Fintech.rss' },
-            { id: 'r/userexperience', url: 'https://www.reddit.com/r/userexperience.rss' },
-        ];
+    // --- CORE MORTGAGE INDUSTRY NEWS & RATES ---
+    { id: 'core-mortgage-news', url: 'https://www.mortgagenewsdaily.com/rss/all.aspx', source: 'Mortgage News Daily' },
+    { id: 'core-mortgage-news', url: 'https://www.housingwire.com/feed/', source: 'HousingWire (General)' },
+    { id: 'core-mortgage-news', url: 'https://www.nationalmortgagenews.com/rss/headlines.xml', source: 'National Mortgage News (Headlines)' },
+    { id: 'core-mortgage-news', url: 'https://www.nationalmortgagenews.com/feed?rss=true', source: 'NMN (The Latest Feed)' },
+
+    // --- AUTHOR & SPECIFIC HOUSINGWIRE COVERAGE (User Requested) ---
+    { id: 'housingwire-authors', url: 'https://www.housingwire.com/author/Connie-Kim/feed/', source: 'HousingWire: Connie Kim' },
+    { id: 'housingwire-authors', url: 'https://www.housingwire.com/author/James-Kleimann/feed/', source: 'HousingWire: James Kleimann' },
+    { id: 'housingwire-authors', url: 'https://www.housingwire.com/author/Flavia-Furlan-Nunes/feed/', source: 'HousingWire: Flávia Nunes' },
+    { id: 'company-news-tags', url: 'https://www.housingwire.com/tag/rocket-mortgage/feed/', source: 'HousingWire: Rocket Mortgage Tag' },
+
+    // --- COMPANY PRESS RELEASES (User Requested) ---
+    { id: 'company-press-releases', url: 'https://www.rocketcompanies.com/feed/?post_type=press_release', source: 'Rocket Companies PR' },
+    { id: 'company-press-releases', url: 'https://feed.businesswire.com/rss/home/company/United+Wholesale+Mortgage%2C+LLC/w6euAGJXjezVpz22AaGCsA==?_gl=1*16nikhv*_gcl_au*MzE3OTYyNzg4LjE3MjQ3NjUwMjM.*_ga*MTI5NTUzNDI3OS4xNzI0NzY1MDIz*_ga_ZQWF70T3FK*MTcyNjA2NzQyNC4zLjEuMTcyNjA2NzQzOS40NS4wLjA.', source: 'UWM Business Wire' },
+
+    // --- REAL ESTATE MARKET & ECONOMIC INFLUENCERS ---
+    { id: 'real-estate-market', url: 'https://www.calculatedriskblog.com/feeds/posts/default', source: 'Calculated Risk' },
+    { id: 'real-estate-market', url: 'https://www.inman.com/feed/', source: 'Inman News' },
+    { id: 'real-estate-market', url: 'https://www.dsnews.com/rss', source: 'DS News (Default Servicing)' },
+
+    // --- REGULATION & COMPLIANCE ---
+    { id: 'regulation-compliance', url: 'https://www.jdsupra.com/rss/browse.aspx?ftid=2334', source: 'JD Supra: Mortgage Law' },
+    { id: 'regulation-compliance', url: 'https://www.consumerfinance.gov/about-us/newsroom/feed/', source: 'CFPB Newsroom' },
+
+    // --- FINANCE, FINTECH, & INDUSTRY TECHNOLOGY ---
+    { id: 'finance-fintech', url: 'https://techcrunch.com/category/fintech/feed/', source: 'TechCrunch: Fintech' },
+    { id: 'finance-fintech', url: 'https://www.theblockcrypto.com/rss/feed/mortgage-fintech', source: 'The Block: Mortgage Fintech' },
+    { id: 'finance-fintech', url: 'https://www.americanbanker.com/feeds/news', source: 'American Banker' },
+
+    // --- OTHER (User Requested) ---
+    { id: 'other-feeds', url: 'https://podcastfeeds.nbcnews.com/HL4TzgYC', source: 'Dateline NBC (Podcast)' },
+    ];
+
+    const REDDIT_FEEDS = [
+        { id: 'r/realestateinvesting', url: 'https://www.reddit.com/r/realestateinvesting.rss' },
+        { id: 'r/Mortgage', url: 'https://www.reddit.com/r/Mortgage.rss' },
+        { id: 'r/FirstTimeHomeBuyer', url: 'https://www.reddit.com/r/FirstTimeHomeBuyer.rss' },
+        { id: 'r/financialindependence', url: 'https://www.reddit.com/r/financialindependence.rss' },
+        { id: 'r/personalfinance', url: 'https://www.reddit.com/r/personalfinance.rss' },
+    ];
        
         const RSS_TO_JSON_PROXY_BASE = 'https://api.rss2json.com/v1/api.json?rss_url=';
         let HIDDEN_LINKS = new Set();
@@ -607,9 +652,10 @@
             toggleButton.textContent = THEME_LABELS[savedTheme];
         }
        
-        // --- NEW: CLICK TO COPY LOGIC ---
+        // --- UPDATED: CLICK TO COPY LOGIC (Excludes Header/Status) ---
         window.copyAISummary = async function() {
-            const summaryDiv = document.getElementById('ai-summary-content');
+            // CRITICAL CHANGE: Only target the clean content div, not the status header
+            const summaryDiv = document.getElementById('ai-summary-content'); 
             const copyButton = document.getElementById('copy-summary-button');
             const originalText = copyButton.textContent;
             
@@ -670,7 +716,7 @@
             setListView(savedView);
         }
 
-        // --- NEW: FILTER BAR TOGGLE LOGIC ---
+        // --- FILTER BAR TOGGLE LOGIC ---
         window.toggleFilterBar = function() {
             const filterBar = document.getElementById('filter-bar-container');
             const toggleButton = document.getElementById('toggle-filter-bar-btn');
@@ -767,15 +813,15 @@
 
         // --- AI SUMMARY INTEGRATION FUNCTION (Calls Server) ---
         async function generateAISummary() {
-            // ... (AI Summary logic remains the same) ...
-            const summaryDiv = document.getElementById('ai-summary-content');
+            const statusDiv = document.getElementById('ai-summary-status'); // NEW: For throttle message
+            const summaryDiv = document.getElementById('ai-summary-content'); // For clean summary
            
             // SECURITY CHECK: Must be run on http://localhost:3000, not file://
             if (window.location.protocol === 'file:') {
+                 statusDiv.innerHTML = ``;
                  summaryDiv.innerHTML = `<p><strong>Note:</strong> To use the AI Strategy Summary, you MUST run this file 
                  via your secure Node.js server (e.g., <code>http://localhost:3000</code>). 
                  The API endpoint is not accessible from a local <code>file://</code> URL.</p>`;
-                 // Disable copy button in dev mode
                  document.getElementById('copy-summary-button').disabled = true;
                  return;
             }
@@ -786,10 +832,12 @@
                 const htmlContent = feedsContainer ? feedsContainer.outerHTML : ''; 
 
                 if (!htmlContent.includes('news-card')) {
+                     statusDiv.innerHTML = ``;
                      summaryDiv.innerHTML = `<p>Awaiting news articles to load, then initiating AI analysis...</p>`;
                      return;
                 }
 
+                statusDiv.innerHTML = ``;
                 summaryDiv.innerHTML = `<p><strong>Generating AI summary and strategic recommendations...</strong></p>`;
 
                 // Call the secure server-side proxy endpoint
@@ -802,22 +850,23 @@
                 const data = await response.json();
 
                 if (response.status !== 200 || data.error) {
+                    statusDiv.innerHTML = ``;
                     summaryDiv.innerHTML = `<p style="color: var(--hide-color);">Error generating summary. Check Node.js console. (Server Status: ${response.status})</p>`;
                     console.error("AI Proxy Error:", data.error || 'Unknown server error.');
-                    // Still disabled on error
                     document.getElementById('copy-summary-button').disabled = true;
                     return;
                 }
 
-                // Display the clean AI response.
-                summaryDiv.innerHTML = data.summary; 
-                // Enable the copy button after successful summary generation
+                // CRITICAL CHANGE: Display header and summary separately
+                statusDiv.innerHTML = data.header; // The status/throttle message goes here
+                summaryDiv.innerHTML = data.summary; // The clean summary content goes here
+                
                 enableCopyButton();
 
             } catch (e) {
+                statusDiv.innerHTML = ``;
                 summaryDiv.innerHTML = `<p style="color: var(--hide-color);">Could not connect to AI server. Ensure <code>node server.js</code> is running on port 3000.</p>`;
                 console.error("Frontend Fetch Error:", e);
-                // Still disabled on connection error
                 document.getElementById('copy-summary-button').disabled = true;
             }
         }
