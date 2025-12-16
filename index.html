@@ -548,7 +548,7 @@
 <div id="community-pulse-feed" class="feed-section">
     <h2>🗣️ Community Pulse (Reddit: r/Mortgage, r/FTHB, r/REI)</h2>
     <div id="community-pulse-container">
-    </div>
+        </div>
 </div>
    
     <script>
@@ -608,7 +608,6 @@
         { id: 'r/personalfinance', url: 'https://www.reddit.com/r/personalfinance.rss' },
     ];
        
-        const RSS_TO_JSON_PROXY_BASE = 'https://api.rss2json.com/v1/api.json?rss_url=';
         let HIDDEN_LINKS = new Set();
        
         // --- THEME LOGIC (Triple Mode) ---
@@ -654,12 +653,10 @@
        
         // --- UPDATED: CLICK TO COPY LOGIC (Excludes Header/Status) ---
         window.copyAISummary = async function() {
-            // CRITICAL CHANGE: Only target the clean content div, not the status header
             const summaryDiv = document.getElementById('ai-summary-content'); 
             const copyButton = document.getElementById('copy-summary-button');
-            const originalText = copyButton.textContent;
+            const originalText = 'Copy Summary'; 
             
-            // Use innerText to grab the readable, rendered content
             const textToCopy = summaryDiv.innerText;
 
             try {
@@ -782,8 +779,9 @@
             const cards = document.querySelectorAll('.news-card:not(.hidden-tile):not(.auto-filtered)');
 
             cards.forEach(card => {
-                const title = card.getAttribute('data-search-title');
-                const description = card.getAttribute('data-search-desc');
+                // Ensure data attributes are used for searching
+                const title = card.getAttribute('data-search-title') || '';
+                const description = card.getAttribute('data-search-desc') || '';
                
                 if (title.includes(filter) || description.includes(filter)) {
                     card.style.display = ''; 
@@ -801,211 +799,309 @@
 
             // Note: The max-height trick works best with a fixed large value
             if (section.classList.contains('hidden')) {
-                section.style.maxHeight = '5000px'; 
+                // Remove the class first to trigger the transition based on style change
                 section.classList.remove('hidden');
+                section.style.maxHeight = '5000px'; 
                 button.classList.add('active');
             } else {
-                section.classList.add('hidden');
+                // Set max-height to 0 before adding the hidden class (which prevents instant jump)
+                section.style.maxHeight = '0';
+                // Wait for transition to finish before setting display/class
+                setTimeout(() => {
+                    section.classList.add('hidden');
+                }, 500); // 500ms delay matches typical CSS transition time
                 button.classList.remove('active');
+            }
+        }
+
+        // --- CORE FETCH AND RENDER LOGIC (Restored) ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadThemePreference();
+            loadViewPreference();
+            loadFilterBarPreference();
+            loadHiddenLinks(); 
+            // NOTE: Marked.js and DOMPurify must be included in your page (via <script> tags in the <head>) 
+            // for the AI summary and Reddit parsing functions to work correctly.
+            fetchAndRenderFeeds(); 
+        });
+
+
+        /**
+         * Renders an individual news card HTML.
+         */
+        function createCardHtml(item) {
+            // Filter out blacklisted items
+            const keywordsMatched = BLACKLIST_KEYWORDS.some(keyword => 
+                item.title.toLowerCase().includes(keyword) || 
+                (item.description && item.description.toLowerCase().includes(keyword))
+            );
+            if (keywordsMatched) return '';
+
+            // Unique ID based on the link for persistence
+            const uid = btoa(item.link).replace(/=/g, '').substring(0, 30);
+            const isHidden = HIDDEN_LINKS.has(item.link);
+            const pubDate = new Date(item.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            // Prepare content for search attributes
+            const searchTitle = item.title.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+            const searchDesc = (item.description || '').toLowerCase().replace(/[^a-z0-9\s]/g, '');
+
+            return `
+                <div class="news-card ${isHidden ? 'hidden-tile' : ''}" 
+                    data-search-title="${searchTitle}" 
+                    data-search-desc="${searchDesc}" 
+                    data-source="${item.source}" 
+                    data-date="${item.pubDate}">
+                    
+                    <div class="card-controls grid-controls">
+                        <span>${item.source}</span>
+                        <button onclick="hideTileForever(this, '${item.link}')">Hide Forever</button>
+                    </div>
+
+                    <h4><a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a></h4>
+                    <p class="description">${item.description}</p>
+
+                    <div class="date-and-controls">
+                        <span class="date">${pubDate}</span>
+                        <div class="card-controls list-controls">
+                            <span>${item.source}</span>
+                            <button onclick="hideTileForever(this, '${item.link}')">Hide Forever</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        /**
+         * Fetches RSS feeds from the server and renders the news cards. (Restored)
+         */
+        async function fetchAndRenderFeeds() {
+            // Clear all editorial containers
+            document.querySelectorAll('.news-grid-container .news-grid').forEach(el => el.innerHTML = 'Loading Editorial News...');
+            document.getElementById('community-pulse-container').innerHTML = ''; // Clear Reddit container
+
+            const rssUrls = EDITORIAL_FEEDS.map(feed => feed.url);
+
+            // Fetch Editorial feeds
+            try {
+                // Assuming /api/fetch-rss is the correct endpoint for your proxy server
+                const response = await fetch('/api/fetch-rss', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls: rssUrls })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Match fetched articles to their section IDs
+                const sectionData = {};
+                data.forEach(article => {
+                    // Find the feed config based on the URL that was fetched
+                    const feedConfig = EDITORIAL_FEEDS.find(f => f.url === article.feedUrl);
+                    if (feedConfig) {
+                        const sectionId = feedConfig.id;
+                        if (!sectionData[sectionId]) {
+                            sectionData[sectionId] = [];
+                        }
+                        sectionData[sectionId].push({ ...article, source: feedConfig.source });
+                    }
+                });
+
+                // Render to the DOM
+                for (const sectionId in sectionData) {
+                    const container = document.querySelector(`.news-grid-container[data-feed-id="${sectionId}"] .news-grid`);
+                    if (container) {
+                        container.innerHTML = sectionData[sectionId].map(createCardHtml).join('');
+                    }
+                }
+                
+                // After editorial rendering, trigger AI summary and Reddit fetch
+                // NOTE: If you don't have marked.js/DOMPurify included, remove the generateAISummary call.
+                generateAISummary(); 
+                fetchRedditFeeds(REDDIT_FEEDS.map(feed => feed.url));
+
+            } catch (error) {
+                console.error('Error fetching Editorial feeds:', error);
+                document.querySelectorAll('.news-grid-container .news-grid').forEach(el => el.innerHTML = `<p class="error-message">Failed to load news: ${error.message}</p>`);
+            }
+        }
+
+
+        /**
+         * Renders Reddit posts into the community pulse container. (Restored)
+         */
+        function renderRedditPosts(posts) {
+            const container = document.getElementById('community-pulse-container');
+            if (!container) return; 
+
+            // Clear existing content
+            container.innerHTML = ''; 
+
+            // Group posts by subreddit
+            const postsBySubreddit = posts.reduce((acc, post) => {
+                if (!acc[post.subreddit]) {
+                    acc[post.subreddit] = [];
+                }
+                acc[post.subreddit].push(post);
+                return acc;
+            }, {});
+
+            // Render each subreddit group
+            for (const subreddit in postsBySubreddit) {
+                const subredditTitle = document.createElement('div');
+                subredditTitle.className = 'reddit-subsection'; // Use the new style class
+                
+                const titleHeading = document.createElement('h3');
+                titleHeading.textContent = `r/${subreddit} (${postsBySubreddit[subreddit].length} Recent Posts)`;
+                subredditTitle.appendChild(titleHeading);
+
+                const grid = document.createElement('div');
+                grid.className = 'news-grid'; 
+                grid.innerHTML = postsBySubreddit[subreddit].map(item => {
+                    const isHidden = HIDDEN_LINKS.has(item.link);
+                    const pubDate = new Date(item.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    
+                    const searchTitle = item.title.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+                    const searchDesc = (item.description || '').toLowerCase().replace(/[^a-z0-9\s]/g, '');
+
+                    // Reddit description often contains HTML/Markdown, sanitize it.
+                    // NOTE: This requires 'marked' and 'DOMPurify' libraries to be loaded via <script> tags in the <head>
+                    let descriptionHtml = item.description ? DOMPurify.sanitize(marked.parse(item.description)) : 'No description available.';
+
+                    return `
+                        <div class="news-card ${isHidden ? 'hidden-tile' : ''}" 
+                            data-search-title="${searchTitle}" 
+                            data-search-desc="${searchDesc}"
+                            data-source="Reddit: ${item.subreddit}" 
+                            data-date="${item.pubDate}">
+                            
+                            <div class="card-controls grid-controls">
+                                <span>r/${item.subreddit}</span>
+                                <button onclick="hideTileForever(this, '${item.link}')">Hide Forever</button>
+                            </div>
+                            
+                            <h4><a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a></h4>
+                            <p class="description">${descriptionHtml}</p>
+
+                            <div class="date-and-controls">
+                                <span class="date">${pubDate}</span>
+                                <div class="card-controls list-controls">
+                                    <span>r/${item.subreddit}</span>
+                                    <button onclick="hideTileForever(this, '${item.link}')">Hide Forever</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                subredditTitle.appendChild(grid);
+                container.appendChild(subredditTitle);
+            }
+        }
+
+
+        /**
+         * Fetches Reddit feeds from the server. (Restored)
+         */
+        async function fetchRedditFeeds(urls) {
+            const container = document.getElementById('community-pulse-container');
+            container.innerHTML = 'Loading Community Pulse...';
+
+            try {
+                // Assuming /api/fetch-reddit is the correct endpoint for your proxy server
+                const response = await fetch('/api/fetch-reddit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls: urls })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const posts = await response.json();
+                renderRedditPosts(posts);
+
+            } catch (error) {
+                console.error('Error fetching Reddit feeds:', error);
+                if (container) {
+                    container.innerHTML = `<p class="error-message">Failed to load Community Pulse: ${error.message}</p>`;
+                }
             }
         }
 
 
         // --- AI SUMMARY INTEGRATION FUNCTION (Calls Server) ---
         async function generateAISummary() {
-            const statusDiv = document.getElementById('ai-summary-status'); // NEW: For throttle message
-            const summaryDiv = document.getElementById('ai-summary-content'); // For clean summary
-           
-            // SECURITY CHECK: Must be run on http://localhost:3000, not file://
-            if (window.location.protocol === 'file:') {
-                 statusDiv.innerHTML = ``;
-                 summaryDiv.innerHTML = `<p><strong>Note:</strong> To use the AI Strategy Summary, you MUST run this file 
-                 via your secure Node.js server (e.g., <code>http://localhost:3000</code>). 
-                 The API endpoint is not accessible from a local <code>file://</code> URL.</p>`;
-                 document.getElementById('copy-summary-button').disabled = true;
-                 return;
+            const summaryHeader = document.getElementById('ai-summary-status');
+            const summaryContent = document.getElementById('ai-summary-content');
+            
+            const summaryPromptType = 'mortgage'; 
+
+            // Disable the copy button during generation
+            document.getElementById('copy-summary-button').disabled = true;
+            summaryHeader.innerHTML = '✨ **Generating new summary...** This may take 30-60 seconds...';
+            summaryContent.innerHTML = '<p>Preparing content for analysis...</p>';
+
+            // 2. Get all news content
+            const allNewsContainers = document.querySelectorAll('.news-grid-container .news-grid');
+            let htmlContent = '';
+            allNewsContainers.forEach(container => {
+                htmlContent += container.innerHTML;
+            });
+
+            if (!htmlContent.trim()) {
+                summaryHeader.innerHTML = '⚠️ **Cannot Generate Summary**';
+                summaryContent.innerHTML = '<p>No content loaded to summarize.</p>';
+                document.getElementById('copy-summary-button').disabled = true;
+                return;
             }
 
+            // 3. Make the API Call
             try {
-                // Grab the HTML content of the main feeds area.
-                const feedsContainer = document.getElementById('core-marketing-feed').parentElement;
-                const htmlContent = feedsContainer ? feedsContainer.outerHTML : ''; 
-
-                if (!htmlContent.includes('news-card')) {
-                     statusDiv.innerHTML = ``;
-                     summaryDiv.innerHTML = `<p>Awaiting news articles to load, then initiating AI analysis...</p>`;
-                     return;
-                }
-
-                statusDiv.innerHTML = ``;
-                summaryDiv.innerHTML = `<p><strong>Generating AI summary and strategic recommendations...</strong></p>`;
-
-                // Call the secure server-side proxy endpoint
+                // Assuming /api/summarize-news is the correct endpoint for your proxy server
                 const response = await fetch('/api/summarize-news', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ htmlContent: htmlContent }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        htmlContent: htmlContent,
+                        promptType: summaryPromptType // Send type for server to select prompt
+                    })
                 });
 
-                const data = await response.json();
-
-                if (response.status !== 200 || data.error) {
-                    statusDiv.innerHTML = ``;
-                    summaryDiv.innerHTML = `<p style="color: var(--hide-color);">Error generating summary. Check Node.js console. (Server Status: ${response.status})</p>`;
-                    console.error("AI Proxy Error:", data.error || 'Unknown server error.');
-                    document.getElementById('copy-summary-button').disabled = true;
-                    return;
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
 
-                // CRITICAL CHANGE: Display header and summary separately
-                statusDiv.innerHTML = data.header; // The status/throttle message goes here
-                summaryDiv.innerHTML = data.summary; // The clean summary content goes here
+                const data = await response.json();
+                
+                // 4. Update the UI
+                summaryHeader.innerHTML = data.header;
+                
+                // Render Markdown content (ensure marked.js and DOMPurify are loaded)
+                const renderedHtml = DOMPurify.sanitize(marked.parse(data.summary));
+                summaryContent.innerHTML = renderedHtml;
                 
                 enableCopyButton();
 
-            } catch (e) {
-                statusDiv.innerHTML = ``;
-                summaryDiv.innerHTML = `<p style="color: var(--hide-color);">Could not connect to AI server. Ensure <code>node server.js</code> is running on port 3000.</p>`;
-                console.error("Frontend Fetch Error:", e);
+            } catch (error) {
+                console.error("AI Proxy Error:", error.message);
+                summaryHeader.innerHTML = '❌ **AI Summary Failed**';
+                summaryContent.innerHTML = `<p class="error-message">AI Proxy Error: ${error.message}</p>`;
                 document.getElementById('copy-summary-button').disabled = true;
             }
         }
-        // --- END AI SUMMARY FUNCTION ---
+        // --- END AI SUMMARY INTEGRATION FUNCTION ---
 
 
-        // --- FETCH & RENDER LOGIC ---
-
-        async function fetchAndRenderAllFeeds() {
-            // Editorial Feeds
-            const fetchEditorialPromises = EDITORIAL_FEEDS.map(feed => fetchAndRenderFeed(feed.url, feed.id, feed.source, false));
-            // Await the main editorial feeds to ensure content is present for the AI
-            await Promise.all(fetchEditorialPromises);
-           
-            // IMPORTANT: Trigger AI Summary after the main editorial feeds are loaded
-            // We use a slight delay just to ensure the DOM has settled after all rendering.
-            setTimeout(generateAISummary, 500); 
-
-            // Reddit Feeds setup (can run in parallel or after summary trigger)
-            const communityContainer = document.getElementById('community-pulse-container');
-            let communityGridHTML = '';
-           
-            for (const feed of REDDIT_FEEDS) {
-                const subredditId = feed.id.split('/')[1];
-                communityGridHTML += `<div class="reddit-subsection">
-                                    <h3>r/${subredditId}</h3>
-                                    <div class="news-grid" id="${feed.id}-grid">Loading...</div>
-                                </div>`;
-            }
-            communityContainer.innerHTML = communityGridHTML;
-
-            REDDIT_FEEDS.forEach(feed => {
-                 fetchAndRenderFeed(feed.url, `${feed.id}-grid`, feed.id, true);
-            });
-        }
-
-
-        async function fetchAndRenderFeed(feedUrl, containerId, sourceName, isReddit) {
-            const sectionDiv = document.getElementById(containerId);
-            const gridContainer = sectionDiv.querySelector('.news-grid') || document.getElementById(containerId);
-           
-            try {
-                const proxyUrl = `${RSS_TO_JSON_PROXY_BASE}${encodeURIComponent(feedUrl)}`;
-                const response = await fetch(proxyUrl);
-                const data = await response.json();
-
-                if (data.status !== 'ok' || !data.items) {
-                    throw new Error('Failed to fetch feed data or feed is empty.');
-                }
-
-                if (gridContainer.textContent.includes('Loading')) {
-                    gridContainer.innerHTML = ''; 
-                }
-               
-                data.items.slice(0, 10).forEach(item => {
-                    const card = createNewsCard(item, sourceName, isReddit);
-                    if (card) { 
-                        gridContainer.appendChild(card);
-                    }
-                });
-
-            } catch (error) {
-                console.error(`Error fetching or rendering feed for ${containerId} (${sourceName}):`, error);
-                if (gridContainer.textContent.includes('Loading')) {
-                    gridContainer.innerHTML = `<p style="color: red; text-align: center; width: 100%;">Error loading feed: ${sourceName}</p>`;
-                }
-            }
-        }
-       
-        /**
-         * Checks if the title or description contains any blacklisted keyword.
-         * @param {string} title 
-         * @param {string} description 
-         * @returns {boolean} True if the item should be automatically filtered.
-         */
-        function isAutoFiltered(title, description) {
-            const content = (title + ' ' + description).toLowerCase();
-            return BLACKLIST_KEYWORDS.some(keyword => content.includes(keyword));
-        }
-
-
-        function createNewsCard(item, sourceName, isReddit) {
-            if (HIDDEN_LINKS.has(item.link)) {
-                return null; 
-            }
-           
-            const card = document.createElement('div');
-            card.className = 'news-card';
-           
-            const title = item.title || 'No Title';
-            let description = item.description || item.content || '';
-            const link = item.link || '#';
-            const date = new Date(item.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            
-            // Clean description for search/display (remove HTML/CDATA)
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = description;
-            let cleanDescription = tempDiv.textContent || tempDiv.innerText || '';
-            cleanDescription = cleanDescription.replace(/(\r\n|\n|\r)/gm, " ").substring(0, 150) + (cleanDescription.length > 150 ? '...' : '');
-
-            let isAuto = isAutoFiltered(title, cleanDescription);
-            if (isAuto) {
-                card.classList.add('auto-filtered');
-            }
-
-            // Set data attributes for search
-            card.setAttribute('data-search-title', title.toLowerCase());
-            card.setAttribute('data-search-desc', cleanDescription.toLowerCase());
-
-            // Build card HTML
-            card.innerHTML = `
-                <div class="card-controls grid-controls">
-                    <span>${sourceName}</span>
-                    <button onclick="hideTileForever(this, '${link}')">Hide Forever</button>
-                </div>
-                <h4><a href="${link}" target="_blank" rel="noopener noreferrer">${title}</a></h4>
-                <p class="description">${cleanDescription}</p>
-                <div class="date-and-controls">
-                    <span class="date">${date}</span>
-                    <div class="card-controls list-controls">
-                         <span>${sourceName}</span>
-                         <button onclick="hideTileForever(this, '${link}')">Hide Forever</button>
-                    </div>
-                </div>
-            `;
-            
-            return card;
-        }
-
-        // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', () => {
-            loadThemePreference();
-            loadViewPreference(); 
-            loadFilterBarPreference();
-            loadHiddenLinks();
-            
-            // *** THE CRITICAL FIX: CALL THE MAIN FETCH FUNCTION ***
-            fetchAndRenderAllFeeds();
-        });
     </script>
 </body>
 </html>
