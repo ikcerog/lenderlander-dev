@@ -4,6 +4,11 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const { GoogleGenAI } = require("@google/genai");
+const Parser = require('rss-parser'); // <-- NEW: RSS Parser dependency
+const parser = new Parser({
+    // Add a custom user-agent to avoid being blocked by some servers
+    headers: { 'User-Agent': 'News-Aggregator-App/1.0' }
+});
 
 // Load environment variables locally (Render ignores this but it's good for local testing)
 require('dotenv').config(); 
@@ -12,25 +17,67 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // --- CRITICAL FIX FOR RENDER DEPLOYMENT ---
-// The API key is now explicitly passed to the GoogleGenAI constructor,
-// ensuring it works on Render (via environment variable) and locally (via .env file).
 const apiKey = process.env.GEMINI_API_KEY;
 const ai = new GoogleGenAI({ apiKey: apiKey });
 // ------------------------------------------
 
 // Middleware setup
-app.use(bodyParser.json({ limit: '50mb' })); // Increased limit for the large HTML content
+app.use(bodyParser.json({ limit: '50mb' })); 
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public'))); // If you were using a public folder
+app.use(express.static(path.join(__dirname, 'public'))); 
 
 // 1. Serve the main HTML file
 app.get('/', (req, res) => {
-    // __dirname is the current directory of server.js
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// --- NEW ENDPOINT 1: Fetch and Parse Standard RSS Feeds ---
+app.post('/api/fetch-rss', async (req, res) => {
+    const { feedUrl } = req.body;
 
-// 2. AI Summary Endpoint
+    if (!feedUrl) {
+        return res.status(400).json({ error: 'Missing feedUrl in request body.' });
+    }
+
+    try {
+        console.log(`Fetching RSS feed: ${feedUrl}`);
+        // rss-parser fetches the feed, parses the XML, and returns a JSON object
+        let feed = await parser.parseURL(feedUrl);
+        
+        // Return only the items array to the frontend
+        res.json({ items: feed.items });
+    } catch (error) {
+        console.error("RSS Fetch Error:", error.message);
+        // Return a 404 to the client to match the expected error handling
+        res.status(404).json({ error: `Failed to fetch or parse RSS feed: ${error.message}` });
+    }
+});
+
+// --- NEW ENDPOINT 2: Fetch and Parse Reddit RSS Feeds ---
+app.post('/api/fetch-reddit', async (req, res) => {
+    const { subreddit } = req.body;
+
+    if (!subreddit) {
+        return res.status(400).json({ error: 'Missing subreddit in request body.' });
+    }
+
+    // Reddit's RSS URL format is consistent (e.g., https://www.reddit.com/r/mortgages/.rss)
+    const feedUrl = `https://www.reddit.com/r/${subreddit}/.rss`;
+
+    try {
+        console.log(`Fetching Reddit feed for: ${subreddit}`);
+        let feed = await parser.parseURL(feedUrl);
+        
+        // Reddit RSS feeds can be large; we limit the items returned
+        res.json({ items: feed.items.slice(0, 15) });
+    } catch (error) {
+        console.error("Reddit Fetch Error:", error.message);
+        // Return a 404 to the client to match the expected error handling
+        res.status(404).json({ error: `Failed to fetch Reddit feed: ${error.message}` });
+    }
+});
+
+// 2. AI Summary Endpoint (Remains the same)
 app.post('/api/summarize-news', async (req, res) => {
     const htmlContent = req.body.htmlContent;
 
@@ -38,32 +85,29 @@ app.post('/api/summarize-news', async (req, res) => {
         return res.status(400).json({ error: 'Missing HTML content in request body.' });
     }
 
-    // --- PROMPT ENGINEERING ---
-    // The key part of this function. We instruct Gemini to analyze the scraped content.
-
+    // --- PROMPT ENGINEERING: MORTGAGE INDUSTRY FOCUS ---
     const modelName = "gemini-2.5-flash"; // Fast and capable model for text analysis
     const inputPrompt = `
-        You are a senior strategic analyst specializing in AdTech, Marketing, and Enterprise Technology.
-        Your task is to analyze the following HTML content, which contains recent news articles from various industry feeds.
+        You are a **senior strategic analyst specializing in the U.S. Residential Mortgage Industry**.
+        Your task is to analyze the following HTML content, which contains recent news articles from major industry feeds (MND, HousingWire, CFPB, Reddit).
 
         1. **SCAN** the provided HTML content for all titles, sources, and descriptions within the '.news-card' elements.
         2. **IGNORE** all hidden elements or administrative content (like 'Hide Forever' buttons).
         3. **GENERATE** a strategic summary in Markdown format that is ready to be directly displayed in a dashboard panel.
 
-        Your output MUST be structured using Markdown headings and lists, focusing on actionable insights:
+        Your output MUST be structured using Markdown headings and lists, focusing on actionable insights for mortgage professionals:
 
-        ## 📰 Core Trends & Market Focus
-        * **[Trend 1/Topic]**: Briefly describe the key theme (e.g., "AI Regulation").
-        * **[Trend 2/Topic]**: Briefly describe the key theme (e.g., "Retail Media Expansion").
-        * ... (List 3-5 major recurring themes)
+        ## 📈 Rate & Housing Market Outlook
+        * **Interest Rate Momentum**: Summarize the current trajectory of 30-year fixed rates (rising, falling, steady) and the primary driver (e.g., inflation, Fed statements).
+        * **Housing Inventory/Prices**: Describe the immediate status of housing inventory and its effect on affordability and sales volume.
 
-        ## 💡 Strategic Takeaways for AdTech Leadership
-        * **For Branding & Campaigns**: What should leadership be doing right now based on the news?
-        * **For Ad Technology**: What specific technology area requires immediate investment or planning?
-        * **For Enterprise Tech/FinTech**: What is the key market shift that requires a business response?
+        ## ⚖️ Regulatory & Compliance Watch
+        * **Key Regulatory Focus**: What is the most active regulatory body (CFPB, FHFA, state AGs) and what specific rules or enforcement actions are dominating the news?
+        * **Litigation & Risk**: Identify any emerging litigation trends or compliance blindspots (e.g., servicing errors, data privacy).
 
-        ## 📉 Potential Risks & Blindspots
-        * [Risk 1]: A critical risk emerging from the news (e.g., privacy changes, economic downturn, competitor move).
+        ## 💻 Industry Strategy & Technology (FinTech)
+        * **Lender Response**: What are large lenders (Rocket, UWM) or regional lenders doing strategically (e.g., staffing, new products, M&A)?
+        * **Tech/AI Integration**: What specific technology area (AI underwriting, LOS platforms, blockchain) requires immediate attention or investment or planning?
 
         ---
         HTML Content to Analyze:
