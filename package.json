@@ -1,19 +1,25 @@
 {
-  "name": "martechnews",
+  "name": "mortgagenews-aggregator",
   "version": "1.0.0",
-  "description": "",
+  "description": "Mortgage industry news aggregator with Gemini AI summary",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "keywords": [],
+  "keywords": [
+    "mortgage",
+    "rss",
+    "gemini",
+    "ai"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "@google/genai": "^1.33.0",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "rss-parser": "^3.13.0"  <-- NEW REQUIRED DEPENDENCY
   }
 }
